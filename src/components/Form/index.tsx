@@ -1,32 +1,15 @@
-import { useFormik } from "formik";
 import { useEffect, useState } from "react";
 import Input from "./Input";
 import axios from "axios";
+import { Contract } from "ethers";
+import { getLPData } from "../../web3";
 
 const Form = () => {
-	const [poolIDs, setPoolIds] = useState([]);
-
-	const formik = useFormik({
-		initialValues: { farm: "", coin1: "", coin2: "", address: "", balance: "" },
-		onSubmit: (values) => {
-			console.log(values);
-		},
-	});
-
-	async function fetchPools() {
-		const { data } = await axios.post(
-			"https://api.thegraph.com/subgraphs/name/traderjoe-xyz/boosted-master-chef",
-			{ query: "{ pools { id pair } }" }
-		);
-
-		setPoolIds(
-			data.data.pools.map((pool: { id: number; pair: string }) => pool.id)
-		);
-	}
-
-	useEffect(() => {
-		fetchPools().catch(console.error);
-	}, []);
+	const [farm, setFarm] = useState<string>("");
+	const [coin1, setCoin1] = useState<string>("");
+	const [coin2, setCoin2] = useState<string>("");
+	const [address, setAddress] = useState<string>("");
+	const [balance, setBalance] = useState<number>(0);
 
 	useEffect(() => {
 		async function fetchBalance(address: string) {
@@ -35,58 +18,55 @@ const Form = () => {
 				{ query: `{ users( where: { id: "${address}" } ) { veJoeBalance } }` }
 			);
 
+			if (!data.data.users[0]) return;
+
+			setBalance(Math.floor(data.data.users[0].veJoeBalance));
+
 			if (!data.data.users) return;
-
-			formik.setFieldValue(
-				"balance",
-				Math.floor(data.data.users[0].veJoeBalance)
-			);
 		}
+		fetchBalance(address);
+	}, [address]);
 
-		if (formik.values.address) {
-			fetchBalance(formik.values.address);
-		}
-	}, [formik]);
+	useEffect(() => {
+		console.log(getLPData(3).then((e) => console.log(e)));
+	}, []);
 
 	return (
 		<div className="bg-joe-light-blue justify-center flex-col p-4 w-[650px] h-96 text-white text-md font-semibold">
 			Calculate Boost
-			<form
-				className="w-full flex flex-col gap-y-1 mt-2"
-				onSubmit={formik.handleSubmit}
-			>
+			<div className="w-full flex flex-col gap-y-1 mt-2">
 				<select className="bg-joe-dark-blue h-8 border border-joe-purple focus:outline-none text-xs">
 					<option value="" selected>
 						Select Farm
 					</option>
 				</select>
-
 				<div className="flex justify-between gap-x-2 w-full">
 					<Input
-						disabled={!formik.values.farm}
-						name="coin1"
-						onChange={formik.handleChange}
-						value={formik.values.coin1}
+						name="Coin 1"
 						placeholder="Select a farm to continue..."
+						onChange={(e) => setCoin1(e.target.value)}
+						value={coin1}
+						disabled={!farm}
 					/>
 					<Input
-						disabled={!formik.values.farm}
-						name="coin2"
-						onChange={formik.handleChange}
-						value={formik.values.coin2}
+						name="Coin 2"
 						placeholder="Select a farm to continue..."
+						onChange={(e) => setCoin2(e.target.value)}
+						value={coin2}
+						disabled={!farm}
 					/>
 				</div>
 				<div className="flex justify-between gap-x-2 w-full">
 					<Input
 						name="address"
-						onChange={formik.handleChange}
-						value={formik.values.address}
+						onChange={(e) => setAddress(e.target.value)}
+						value={address}
 					/>
 					<Input
 						name="balance"
-						onChange={formik.handleChange}
-						value={formik.values.balance}
+						onChange={(e) => setBalance(Number(e.target.value))}
+						value={balance}
+						type="number"
 					/>
 				</div>
 				<button
@@ -95,7 +75,7 @@ const Form = () => {
 				>
 					Calculate APR!
 				</button>
-			</form>
+			</div>
 			Your APR:
 		</div>
 	);
