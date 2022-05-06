@@ -44,6 +44,7 @@ export async function getLPData(poolID: number): Promise<LPData> {
 		token1Symbol,
 		token1Decimals,
 		totalSupply,
+		pair,
 	] = await Promise.all([
 		LP_CONTRACT.token0(),
 		TOKEN_0_CONTRACT.name(),
@@ -54,6 +55,7 @@ export async function getLPData(poolID: number): Promise<LPData> {
 		TOKEN_1_CONTRACT.symbol(),
 		TOKEN_1_CONTRACT.decimals(),
 		TOKEN_1_CONTRACT.totalSupply(),
+		(await TOKEN_0_CONTRACT.symbol()) + "-" + (await TOKEN_1_CONTRACT.symbol()),
 	]);
 
 	return {
@@ -66,11 +68,8 @@ export async function getLPData(poolID: number): Promise<LPData> {
 		token1Symbol,
 		token1Decimals,
 		totalSupply,
+		pair,
 
-		pair:
-			(await TOKEN_0_CONTRACT.symbol()) +
-			"-" +
-			(await TOKEN_1_CONTRACT.symbol()),
 		lpAddress: lpToken,
 	};
 }
@@ -84,13 +83,28 @@ export async function getLPs(): Promise<LPData[]> {
 		})
 	);
 }
+export async function fetchBalance(address: string): Promise<number> {
+	const {
+		data: {
+			data: { users },
+		},
+	} = await axios.post(
+		"https://api.thegraph.com/subgraphs/name/traderjoe-xyz/vejoe",
+		{
+			query: `{ users( where: {id: "${address.toLowerCase()}" } ) { veJoeBalance } }`,
+		}
+	);
+
+	return Math.floor(Number(users[0]!.veJoeBalance));
+}
 
 export async function getPairData(address: string) {
 	return (
 		await axios.post(
 			"https://api.thegraph.com/subgraphs/name/traderjoe-xyz/exchange",
 			{
-				query: `{ pairs(where: { id: "${address.toLowerCase()}"}) { token0Price, token1Price, reserveUSD } }`,
+				variables: { id: address.toLowerCase() },
+				query: `{ pairs(where: { id: "${address.toLowerCase()}" } ) { token0Price, token1Price, reserveUSD } }`,
 			}
 		)
 	).data;
@@ -103,7 +117,7 @@ export async function balancePair(
 ): Promise<number> {
 	const {
 		data: { pairs },
-	} = await getPairData(address.toLowerCase());
+	} = await getPairData(address);
 
 	const token0Price = pairs[0].token0Price;
 	const token1Price = pairs[0].token1Price;

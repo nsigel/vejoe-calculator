@@ -3,7 +3,7 @@ import axios from "axios";
 
 import Input from "./Input";
 
-import { balancePair, getLPs } from "../../web3";
+import { balancePair, fetchBalance, getLPs } from "../../web3";
 import { LPData } from "../../utils/types";
 
 const Form = () => {
@@ -11,42 +11,30 @@ const Form = () => {
 
 	const [token0, setToken0] = useState<number>(0);
 	const [token1, setToken1] = useState<number>(0);
+	const [total, setTotal] = useState<number>(0);
 
 	const [address, setAddress] = useState<string>("");
 	const [balance, setBalance] = useState<number>(0);
-	const [total, setTotal] = useState<number>(0);
 
 	const [pools, setPools] = useState<LPData[]>([]);
 
 	useEffect(() => {
-		const getPools = async () => {
-			const pools = await getLPs();
-			setPools(pools);
-		};
+		async function getPools() {
+			setPools(await getLPs());
+		}
 		getPools();
 	}, []);
 
 	useEffect(() => {
-		async function fetchBalance(address: string) {
-			const { data } = await axios.post(
-				"https://api.thegraph.com/subgraphs/name/traderjoe-xyz/vejoe",
-				{
-					query: `{ users( where: { id: "${address.toLowerCase()}" } ) { veJoeBalance } }`,
-				}
-			);
-
-			if (!data.data.users[0]) return;
-
-			setBalance(Math.floor(data.data.users[0].veJoeBalance));
-
-			if (!data.data.users) return;
-		}
-		fetchBalance(address);
-	}, [address]);
-
-	useEffect(() => {
 		setTotal(token0 + token1);
 	}, [token0, token1]);
+
+	useEffect(() => {
+		async function getBalance() {
+			fetchBalance(address).then(setBalance);
+		}
+		getBalance();
+	}, [address]);
 
 	return (
 		<div className="bg-joe-light-blue justify-center flex-col p-4 w-[650px] h-96 text-white text-md font-semibold">
@@ -107,8 +95,8 @@ const Form = () => {
 				</div>
 				<Input
 					name="total"
-					onChange={(e) => setTotal(Number(e.target.value))}
 					placeholder={!selectedPool ? "Select a farm to continue..." : ""}
+					onChange={(e) => setTotal(e.target.valueAsNumber)}
 					disabled={!selectedPool}
 					value={total}
 				/>
