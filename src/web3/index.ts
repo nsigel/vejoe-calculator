@@ -1,3 +1,4 @@
+import { LPData } from "./../utils/types";
 import { ethers } from "ethers";
 
 import BoostedMasterChief from "../contracts/BoostedMasterChef.json";
@@ -16,7 +17,7 @@ const BMC_CONTRACT = new ethers.Contract(
 	provider
 );
 
-export async function getLPData(poolID: number) {
+export async function getLPData(poolID: number): Promise<LPData> {
 	const { lpToken } = await BMC_CONTRACT.poolInfo(poolID);
 
 	const LP_CONTRACT = new ethers.Contract(lpToken, JoeLPToken, provider);
@@ -32,15 +33,52 @@ export async function getLPData(poolID: number) {
 		provider
 	);
 
-	return {
-		token0: await LP_CONTRACT.token0(),
-		token0Name: await TOKEN_0_CONTRACT.name(),
-		token0Symbol: await TOKEN_0_CONTRACT.name(),
-		token0Decimals: await TOKEN_0_CONTRACT.decimals(),
+	const [
+		token0,
+		token0Name,
+		token0Symbol,
+		token0Decimals,
+		token1,
+		token1Name,
+		token1Symbol,
+		token1Decimals,
+		totalSupply,
+	] = await Promise.all([
+		LP_CONTRACT.token0(),
+		TOKEN_0_CONTRACT.name(),
+		TOKEN_0_CONTRACT.symbol(),
+		TOKEN_0_CONTRACT.decimals(),
+		LP_CONTRACT.token1(),
+		TOKEN_1_CONTRACT.name(),
+		TOKEN_1_CONTRACT.symbol(),
+		TOKEN_1_CONTRACT.decimals(),
+		TOKEN_1_CONTRACT.totalSupply(),
+	]);
 
-		token1: await LP_CONTRACT.token1(),
-		token1Name: await TOKEN_1_CONTRACT.name(),
-		token1Symbol: await TOKEN_1_CONTRACT.name(),
-		token1Decimals: await TOKEN_1_CONTRACT.decimals(),
+	return {
+		token0,
+		token0Name,
+		token0Symbol,
+		token0Decimals,
+		token1,
+		token1Name,
+		token1Symbol,
+		token1Decimals,
+		totalSupply,
+
+		pair:
+			(await TOKEN_0_CONTRACT.symbol()) +
+			"-" +
+			(await TOKEN_1_CONTRACT.symbol()),
 	};
+}
+
+export async function getLPs(): Promise<[...LPData[]]> {
+	const length = await BMC_CONTRACT.poolLength();
+
+	return Promise.all(
+		Array.from(Array(Number(length)).keys()).map((poolID): Promise<LPData> => {
+			return getLPData(poolID);
+		})
+	);
 }

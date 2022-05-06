@@ -1,15 +1,27 @@
 import { useEffect, useState } from "react";
-import Input from "./Input";
 import axios from "axios";
-import { Contract } from "ethers";
-import { getLPData } from "../../web3";
+
+import Input from "./Input";
+import { getLPs } from "../../web3";
+import { LPData } from "../../utils/types";
 
 const Form = () => {
 	const [farm, setFarm] = useState<string>("");
+	const [coin0, setCoin0] = useState<string>("");
 	const [coin1, setCoin1] = useState<string>("");
-	const [coin2, setCoin2] = useState<string>("");
 	const [address, setAddress] = useState<string>("");
 	const [balance, setBalance] = useState<number>(0);
+
+	const [pools, setPools] = useState<LPData[]>([]);
+	const [selectedPool, setSelectedPool] = useState<LPData>();
+
+	useEffect(() => {
+		const getPools = async () => {
+			const pools = await getLPs();
+			setPools(pools);
+		};
+		getPools();
+	}, []);
 
 	useEffect(() => {
 		async function fetchBalance(address: string) {
@@ -27,32 +39,36 @@ const Form = () => {
 		fetchBalance(address);
 	}, [address]);
 
-	useEffect(() => {
-		console.log(getLPData(3).then((e) => console.log(e)));
-	}, []);
-
 	return (
 		<div className="bg-joe-light-blue justify-center flex-col p-4 w-[650px] h-96 text-white text-md font-semibold">
 			Calculate Boost
 			<div className="w-full flex flex-col gap-y-1 mt-2">
-				<select className="bg-joe-dark-blue h-8 border border-joe-purple focus:outline-none text-xs">
-					<option value="" selected>
-						Select Farm
-					</option>
+				<select
+					className="bg-joe-dark-blue h-8 border border-joe-purple focus:outline-none text-xs"
+					defaultValue="Select Farm"
+				>
+					<option value="Select Farm">Select Farm</option>
+					{pools.map((pool, i) => {
+						return (
+							<option key={i} value={pool.pair}>
+								{pool.pair}
+							</option>
+						);
+					})}
 				</select>
 				<div className="flex justify-between gap-x-2 w-full">
+					<Input
+						name="Coin 0"
+						placeholder="Select a farm to continue..."
+						onChange={(e) => setCoin0(e.target.value)}
+						value={coin0}
+						disabled={!farm}
+					/>
 					<Input
 						name="Coin 1"
 						placeholder="Select a farm to continue..."
 						onChange={(e) => setCoin1(e.target.value)}
 						value={coin1}
-						disabled={!farm}
-					/>
-					<Input
-						name="Coin 2"
-						placeholder="Select a farm to continue..."
-						onChange={(e) => setCoin2(e.target.value)}
-						value={coin2}
 						disabled={!farm}
 					/>
 				</div>
