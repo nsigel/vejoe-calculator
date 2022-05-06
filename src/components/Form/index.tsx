@@ -3,7 +3,7 @@ import axios from "axios";
 
 import Input from "./Input";
 
-import { balancePair, fetchBalance, getLPs } from "../../web3";
+import { balancePair, balanceTokens, fetchBalance, getLPs } from "../../web3";
 import { LPData } from "../../utils/types";
 
 const Form = () => {
@@ -19,25 +19,32 @@ const Form = () => {
 	const [pools, setPools] = useState<LPData[]>([]);
 
 	useEffect(() => {
-		async function getPools() {
-			setPools(await getLPs());
-		}
-		getPools();
+		setToken0(0);
+		setToken1(0);
+		setTotal(0);
+	}, [selectedPool]);
+
+	// useEffect(() => {
+	// 	async function getPools() {
+	// 		setPools(await getLPs());
+	// 	}
+	// 	getPools();
+	// }, []);
+
+	useEffect(() => {
+		getLPs().then(setPools);
 	}, []);
 
 	useEffect(() => {
-		setTotal(token0 + token1);
-	}, [token0, token1]);
-
-	useEffect(() => {
 		async function getBalance() {
+			if (!address) return;
 			fetchBalance(address).then(setBalance);
 		}
 		getBalance();
 	}, [address]);
 
 	return (
-		<div className="bg-joe-light-blue justify-center flex-col p-4 w-[650px] h-96 text-white text-md font-semibold">
+		<div className="bg-joe-light-blue flex justify-center flex-col p-4 w-[650px] h-96 text-white text-md font-semibold">
 			Calculate Boost
 			<div className="w-full flex flex-col gap-y-1 mt-2">
 				<select
@@ -49,9 +56,9 @@ const Form = () => {
 					}}
 				>
 					<option value="Select Farm">Select Farm</option>
-					{pools.map((pool, i) => {
+					{pools.map((pool, _) => {
 						return (
-							<option key={i} value={pool.pair}>
+							<option key={_} value={pool.pair}>
 								{pool.pair}
 							</option>
 						);
@@ -64,11 +71,12 @@ const Form = () => {
 						onChange={async (e) => {
 							setToken0(e.target.valueAsNumber);
 
-							const pair = await balancePair(
+							const pair = await balanceTokens(
 								selectedPool!.lpAddress,
 								e.target.valueAsNumber,
 								0
 							);
+
 							setToken1(pair);
 						}}
 						value={token0}
@@ -81,11 +89,12 @@ const Form = () => {
 						onChange={async (e) => {
 							setToken1(e.target.valueAsNumber);
 
-							const pair = await balancePair(
+							const pair = await balanceTokens(
 								selectedPool!.lpAddress,
-								Number.parseFloat(e.target.value),
+								e.target.valueAsNumber,
 								1
 							);
+
 							setToken0(pair);
 						}}
 						value={token1}
@@ -96,8 +105,18 @@ const Form = () => {
 				<Input
 					name="total"
 					placeholder={!selectedPool ? "Select a farm to continue..." : ""}
-					onChange={(e) => setTotal(e.target.valueAsNumber)}
+					onChange={async (e) => {
+						setTotal(e.target.valueAsNumber);
+						const tokenBalances = await balancePair(
+							selectedPool!.lpAddress,
+							e.target.valueAsNumber
+						);
+
+						setToken0(tokenBalances[0]);
+						setToken1(tokenBalances[1]);
+					}}
 					disabled={!selectedPool}
+					type="number"
 					value={total}
 				/>
 				<div className="flex justify-between gap-x-2 w-full">

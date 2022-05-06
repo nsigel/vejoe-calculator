@@ -23,16 +23,13 @@ export async function getLPData(poolID: number): Promise<LPData> {
 
 	const LP_CONTRACT = new ethers.Contract(lpToken, JoeLPToken, provider);
 
-	const TOKEN_0_CONTRACT = new ethers.Contract(
-		await LP_CONTRACT.token0(),
-		IERC20,
-		provider
-	);
-	const TOKEN_1_CONTRACT = new ethers.Contract(
-		await LP_CONTRACT.token1(),
-		IERC20,
-		provider
-	);
+	const [token0Address, token1Address] = await Promise.all([
+		LP_CONTRACT.token0(),
+		LP_CONTRACT.token1(),
+	]);
+
+	const TOKEN_0_CONTRACT = new ethers.Contract(token0Address, IERC20, provider);
+	const TOKEN_1_CONTRACT = new ethers.Contract(token1Address, IERC20, provider);
 
 	const [
 		token0,
@@ -75,6 +72,7 @@ export async function getLPData(poolID: number): Promise<LPData> {
 }
 
 export async function getLPs(): Promise<LPData[]> {
+	console.log("fetched LP");
 	const length = await BMC_CONTRACT.poolLength();
 
 	return Promise.all(
@@ -84,6 +82,7 @@ export async function getLPs(): Promise<LPData[]> {
 	);
 }
 export async function fetchBalance(address: string): Promise<number> {
+	console.log("Fetched balance");
 	const {
 		data: {
 			data: { users },
@@ -110,11 +109,11 @@ export async function getPairData(address: string) {
 	).data;
 }
 
-export async function balancePair(
+export async function balanceTokens(
 	address: string,
 	amount: number,
 	token: 0 | 1
-): Promise<number> {
+) {
 	const {
 		data: { pairs },
 	} = await getPairData(address);
@@ -127,4 +126,18 @@ export async function balancePair(
 	} else {
 		return amount * token1Price;
 	}
+}
+
+export async function balancePair(
+	address: string,
+	amount: number
+): Promise<number[]> {
+	const {
+		data: { pairs },
+	} = await getPairData(address);
+
+	const token0Price = pairs[0].token0Price;
+	const token1Price = pairs[0].token1Price;
+
+	return [(amount / 2) * token0Price, (amount / 2) * token1Price];
 }
