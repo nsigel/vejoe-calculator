@@ -1,3 +1,4 @@
+import axios from "axios";
 import { LPData } from "./../utils/types";
 import { ethers } from "ethers";
 
@@ -70,6 +71,7 @@ export async function getLPData(poolID: number): Promise<LPData> {
 			(await TOKEN_0_CONTRACT.symbol()) +
 			"-" +
 			(await TOKEN_1_CONTRACT.symbol()),
+		lpAddress: lpToken,
 	};
 }
 
@@ -81,4 +83,36 @@ export async function getLPs(): Promise<[...LPData[]]> {
 			return getLPData(poolID);
 		})
 	);
+}
+
+export async function getPairData(address: string) {
+	return (
+		await axios.post(
+			"https://api.thegraph.com/subgraphs/name/traderjoe-xyz/exchange",
+			{
+				query: `{ pairs(where: { id: "${address.toLowerCase()}"}) { token0Price, token1Price, reserveUSD } }`,
+			}
+		)
+	).data;
+}
+
+export async function balancePair(
+	address: string,
+	amount: number,
+	token: 0 | 1
+) {
+	const {
+		data: { pairs },
+	} = await getPairData(address.toLowerCase());
+
+	if (!pairs[0]) return;
+
+	const token0Price = pairs[0].token0Price;
+	const token1Price = pairs[0].token1Price;
+
+	if (token) {
+		return [amount * token0Price];
+	} else {
+		return [amount * token1Price];
+	}
 }

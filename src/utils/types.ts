@@ -12,4 +12,5 @@ export interface LPData {
 	totalSupply: number;
 
 	pair: string;
+	lpAddress: string;
 }

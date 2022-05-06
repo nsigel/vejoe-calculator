@@ -2,18 +2,19 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 
 import Input from "./Input";
-import { getLPs } from "../../web3";
+import { balancePair, getLPs, getPairData } from "../../web3";
 import { LPData } from "../../utils/types";
 
 const Form = () => {
-	const [farm, setFarm] = useState<string>("");
+	const [selectedPool, setSelectedPool] = useState<LPData>();
+
 	const [coin0, setCoin0] = useState<string>("");
 	const [coin1, setCoin1] = useState<string>("");
 	const [address, setAddress] = useState<string>("");
 	const [balance, setBalance] = useState<number>(0);
+	const [total, setTotal] = useState<number>(0);
 
 	const [pools, setPools] = useState<LPData[]>([]);
-	const [selectedPool, setSelectedPool] = useState<LPData>();
 
 	useEffect(() => {
 		const getPools = async () => {
@@ -27,7 +28,9 @@ const Form = () => {
 		async function fetchBalance(address: string) {
 			const { data } = await axios.post(
 				"https://api.thegraph.com/subgraphs/name/traderjoe-xyz/vejoe",
-				{ query: `{ users( where: { id: "${address}" } ) { veJoeBalance } }` }
+				{
+					query: `{ users( where: { id: "${address.toLowerCase()}" } ) { veJoeBalance } }`,
+				}
 			);
 
 			if (!data.data.users[0]) return;
@@ -39,6 +42,10 @@ const Form = () => {
 		fetchBalance(address);
 	}, [address]);
 
+	useEffect(() => {
+		setTotal(Number(coin0) + Number(coin1));
+	}, [coin0, coin1]);
+
 	return (
 		<div className="bg-joe-light-blue justify-center flex-col p-4 w-[650px] h-96 text-white text-md font-semibold">
 			Calculate Boost
@@ -46,6 +53,10 @@ const Form = () => {
 				<select
 					className="bg-joe-dark-blue h-8 border border-joe-purple focus:outline-none text-xs"
 					defaultValue="Select Farm"
+					value={selectedPool?.pair}
+					onChange={(e) => {
+						setSelectedPool(pools.find((pool) => pool.pair === e.target.value));
+					}}
 				>
 					<option value="Select Farm">Select Farm</option>
 					{pools.map((pool, i) => {
@@ -58,20 +69,46 @@ const Form = () => {
 				</select>
 				<div className="flex justify-between gap-x-2 w-full">
 					<Input
-						name="Coin 0"
-						placeholder="Select a farm to continue..."
-						onChange={(e) => setCoin0(e.target.value)}
+						name={selectedPool?.token0Name || "Select a farm..."}
+						placeholder={!selectedPool ? "Select a farm to continue..." : ""}
+						onChange={async (e) => {
+							setCoin0(e.target.value);
+							const pair = await balancePair(
+								selectedPool!.lpAddress,
+								Number.parseFloat(e.target.value),
+								0
+							);
+							setCoin1(pair!.toString());
+						}}
 						value={coin0}
-						disabled={!farm}
+						type="number"
+						disabled={!selectedPool}
 					/>
 					<Input
-						name="Coin 1"
-						placeholder="Select a farm to continue..."
-						onChange={(e) => setCoin1(e.target.value)}
+						name={selectedPool?.token1Name || "Select a farm..."}
+						placeholder={!selectedPool ? "Select a farm to continue..." : ""}
+						onChange={async (e) => {
+							setCoin1(e.target.value);
+							const pair = await balancePair(
+								selectedPool!.lpAddress,
+								Number.parseFloat(e.target.value),
+								1
+							);
+							console.log(pair);
+							setCoin1(pair!.toString());
+						}}
 						value={coin1}
-						disabled={!farm}
+						type="number"
+						disabled={!selectedPool}
 					/>
 				</div>
+				<Input
+					name="total"
+					onChange={(e) => setTotal(Number(e.target.value))}
+					placeholder={!selectedPool ? "Select a farm to continue..." : ""}
+					disabled={!selectedPool}
+					value={total}
+				/>
 				<div className="flex justify-between gap-x-2 w-full">
 					<Input
 						name="address"
