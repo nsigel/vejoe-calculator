@@ -75,7 +75,7 @@ export async function getLPData(poolID: number): Promise<LPData> {
 	};
 }
 
-export async function getLPs(): Promise<[...LPData[]]> {
+export async function getLPs(): Promise<LPData[]> {
 	const length = await BMC_CONTRACT.poolLength();
 
 	return Promise.all(
@@ -100,19 +100,17 @@ export async function balancePair(
 	address: string,
 	amount: number,
 	token: 0 | 1
-) {
+): Promise<number> {
 	const {
 		data: { pairs },
 	} = await getPairData(address.toLowerCase());
-
-	if (!pairs[0]) return;
 
 	const token0Price = pairs[0].token0Price;
 	const token1Price = pairs[0].token1Price;
 
 	if (token) {
-		return [amount * token0Price];
+		return amount * token0Price;
 	} else {
-		return [amount * token1Price];
+		return amount * token1Price;
 	}
 }

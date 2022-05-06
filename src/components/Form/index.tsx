@@ -2,14 +2,16 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 
 import Input from "./Input";
-import { balancePair, getLPs, getPairData } from "../../web3";
+
+import { balancePair, getLPs } from "../../web3";
 import { LPData } from "../../utils/types";
 
 const Form = () => {
 	const [selectedPool, setSelectedPool] = useState<LPData>();
 
-	const [coin0, setCoin0] = useState<string>("");
-	const [coin1, setCoin1] = useState<string>("");
+	const [token0, setToken0] = useState<number>(0);
+	const [token1, setToken1] = useState<number>(0);
+
 	const [address, setAddress] = useState<string>("");
 	const [balance, setBalance] = useState<number>(0);
 	const [total, setTotal] = useState<number>(0);
@@ -43,8 +45,8 @@ const Form = () => {
 	}, [address]);
 
 	useEffect(() => {
-		setTotal(Number(coin0) + Number(coin1));
-	}, [coin0, coin1]);
+		setTotal(token0 + token1);
+	}, [token0, token1]);
 
 	return (
 		<div className="bg-joe-light-blue justify-center flex-col p-4 w-[650px] h-96 text-white text-md font-semibold">
@@ -72,15 +74,16 @@ const Form = () => {
 						name={selectedPool?.token0Name || "Select a farm..."}
 						placeholder={!selectedPool ? "Select a farm to continue..." : ""}
 						onChange={async (e) => {
-							setCoin0(e.target.value);
+							setToken0(e.target.valueAsNumber);
+
 							const pair = await balancePair(
 								selectedPool!.lpAddress,
-								Number.parseFloat(e.target.value),
+								e.target.valueAsNumber,
 								0
 							);
-							setCoin1(pair!.toString());
+							setToken1(pair);
 						}}
-						value={coin0}
+						value={token0}
 						type="number"
 						disabled={!selectedPool}
 					/>
@@ -88,16 +91,16 @@ const Form = () => {
 						name={selectedPool?.token1Name || "Select a farm..."}
 						placeholder={!selectedPool ? "Select a farm to continue..." : ""}
 						onChange={async (e) => {
-							setCoin1(e.target.value);
+							setToken1(e.target.valueAsNumber);
+
 							const pair = await balancePair(
 								selectedPool!.lpAddress,
 								Number.parseFloat(e.target.value),
 								1
 							);
-							console.log(pair);
-							setCoin1(pair!.toString());
+							setToken0(pair);
 						}}
-						value={coin1}
+						value={token1}
 						type="number"
 						disabled={!selectedPool}
 					/>
