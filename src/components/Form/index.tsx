@@ -1,16 +1,27 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
 
 import Input from "./Input";
 
-import { balancePair, balanceTokens, fetchBalance, getLPs } from "../../web3";
-import { LPData } from "../../utils/types";
+import {
+	balancePair,
+	balanceTokens,
+	fetchBalance,
+	getJoePrice,
+	getLPReserves,
+	getLPs,
+	poolUserInfo,
+	totalAllocPoint,
+	totalJoePerSec,
+} from "../../web3";
+import { LPData } from "../../web3/types";
+import Result from "../Result";
 
 const Form = () => {
 	const [selectedPool, setSelectedPool] = useState<LPData>();
 
 	const [token0, setToken0] = useState<number>(0);
 	const [token1, setToken1] = useState<number>(0);
+	const [joePrice, setJoePrice] = useState<number>(0);
 	const [total, setTotal] = useState<number>(0);
 
 	const [address, setAddress] = useState<string>("");
@@ -22,14 +33,9 @@ const Form = () => {
 		setToken0(0);
 		setToken1(0);
 		setTotal(0);
-	}, [selectedPool]);
-
-	// useEffect(() => {
-	// 	async function getPools() {
-	// 		setPools(await getLPs());
-	// 	}
-	// 	getPools();
-	// }, []);
+		getJoePrice().then(setJoePrice);
+		console.log(joePrice);
+	}, [selectedPool, joePrice]);
 
 	useEffect(() => {
 		getLPs().then(setPools);
@@ -69,6 +75,7 @@ const Form = () => {
 						name={selectedPool?.token0Name || "Select a farm..."}
 						placeholder={!selectedPool ? "Select a farm to continue..." : ""}
 						onChange={async (e) => {
+							if (!selectedPool) return;
 							setToken0(e.target.valueAsNumber);
 
 							const pair = await balanceTokens(
@@ -87,6 +94,7 @@ const Form = () => {
 						name={selectedPool?.token1Name || "Select a farm..."}
 						placeholder={!selectedPool ? "Select a farm to continue..." : ""}
 						onChange={async (e) => {
+							if (!selectedPool) return;
 							setToken1(e.target.valueAsNumber);
 
 							const pair = await balanceTokens(
@@ -140,6 +148,16 @@ const Form = () => {
 				</button>
 			</div>
 			Your APR:
+			<Result
+				{...{
+					poolData: selectedPool,
+					veJoe: balance,
+					totalAllocPoint,
+					token0,
+					token1,
+					joePrice,
+				}}
+			/>
 		</div>
 	);
 };

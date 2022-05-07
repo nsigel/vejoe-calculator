@@ -1,6 +1,6 @@
 import axios from "axios";
-import { LPData } from "./../utils/types";
-import { ethers } from "ethers";
+import { LPData, PoolInfoData, ReserveData } from "./types";
+import { ethers, BigNumber } from "ethers";
 
 import BoostedMasterChief from "../contracts/BoostedMasterChef.json";
 import JoeLPToken from "../contracts/JoeLPToken.json";
@@ -9,6 +9,7 @@ import IERC20 from "../contracts/IERC20.json";
 const RPC_URL = "https://api.avax.network/ext/bc/C/rpc";
 
 const BMC_ADDRESS = "0x4483f0b6e2F5486D06958C20f8C39A7aBe87bf8F";
+const NULL_ADDRESS = "0x0000000000000000000000000000000000000000";
 
 const provider = new ethers.providers.JsonRpcProvider(RPC_URL);
 
@@ -18,14 +19,93 @@ const BMC_CONTRACT = new ethers.Contract(
 	provider
 );
 
+export var totalJoePerSec: BigNumber;
+export var totalAllocPoint: BigNumber;
+
+// O(1) time
+export function calculateBaseReward(
+	poolData: LPData,
+	token0: number,
+	token1: number
+): number {
+	const poolJoePerSec =
+		(Number(totalJoePerSec) * Number(poolData.allocPoint)) /
+		Number(totalAllocPoint);
+	// Execute calculations in token decimals
+	const userLiquidity =
+		Math.min(
+			token0 * 10 ** poolData.token0Decimals,
+			token1 * 10 ** poolData.token1Decimals
+		) * poolData.totalSupply;
+	const veJoeShare = Number(poolData.veJoeShareBp) / 10000;
+
+	return (
+		(userLiquidity * poolJoePerSec * (1 - veJoeShare)) /
+		Number(poolData.totalLpSupply)
+	);
+}
+
+export function calculateBoostedReward(
+	poolData: LPData,
+	token0: number,
+	token1: number,
+	veJoe: number
+) {
+	const userLiquidity =
+		Math.min(
+			token0 * 10 ** poolData.token0Decimals,
+			token1 * 10 ** poolData.token1Decimals
+		) * poolData.totalSupply;
+
+	const poolJoePerSec =
+		(Number(totalJoePerSec) * Number(poolData.allocPoint)) /
+		Number(totalAllocPoint);
+
+	const veJoeShare = Number(poolData.veJoeShareBp) / 10000;
+
+	return (
+		(Math.sqrt(userLiquidity * veJoe * 10 ** 18) * poolJoePerSec * veJoeShare) /
+		10000
+	);
+}
+
+export async function getLPReserves(poolData: LPData): Promise<ReserveData> {
+	const LP_CONTRACT = new ethers.Contract(
+		poolData.lpAddress,
+		JoeLPToken,
+		provider
+	);
+
+	const data = await LP_CONTRACT.getReserves();
+
+	return {
+		_reserve0: data[0],
+		_reserve1: data[1],
+		_blockTimestampLast: data[2],
+	};
+}
+
+export async function poolUserInfo(
+	poolID: number,
+	wallet: string
+): Promise<any> {
+	return await BMC_CONTRACT.userInfo(poolID, wallet);
+}
+
 export async function getLPData(poolID: number): Promise<LPData> {
-	const { lpToken } = await BMC_CONTRACT.poolInfo(poolID);
+	const { lpToken, totalLpSupply, totalFactor, allocPoint, veJoeShareBp } =
+		await BMC_CONTRACT.poolInfo(poolID);
 
 	const LP_CONTRACT = new ethers.Contract(lpToken, JoeLPToken, provider);
 
 	const [token0Address, token1Address] = await Promise.all([
 		LP_CONTRACT.token0(),
 		LP_CONTRACT.token1(),
+	]);
+
+	[totalJoePerSec, totalAllocPoint] = await Promise.all([
+		BMC_CONTRACT.joePerSec(),
+		BMC_CONTRACT.totalAllocPoint(),
 	]);
 
 	const TOKEN_0_CONTRACT = new ethers.Contract(token0Address, IERC20, provider);
@@ -52,6 +132,7 @@ export async function getLPData(poolID: number): Promise<LPData> {
 		TOKEN_1_CONTRACT.symbol(),
 		TOKEN_1_CONTRACT.decimals(),
 		TOKEN_1_CONTRACT.totalSupply(),
+
 		(await TOKEN_0_CONTRACT.symbol()) + "-" + (await TOKEN_1_CONTRACT.symbol()),
 	]);
 
@@ -67,12 +148,16 @@ export async function getLPData(poolID: number): Promise<LPData> {
 		totalSupply,
 		pair,
 
+		totalLpSupply,
+		totalFactor,
+		allocPoint,
+		veJoeShareBp,
 		lpAddress: lpToken,
+		poolID,
 	};
 }
 
 export async function getLPs(): Promise<LPData[]> {
-	console.log("fetched LP");
 	const length = await BMC_CONTRACT.poolLength();
 
 	return Promise.all(
@@ -81,8 +166,8 @@ export async function getLPs(): Promise<LPData[]> {
 		})
 	);
 }
+
 export async function fetchBalance(address: string): Promise<number> {
-	console.log("Fetched balance");
 	const {
 		data: {
 			data: { users },
@@ -102,11 +187,21 @@ export async function getPairData(address: string) {
 		await axios.post(
 			"https://api.thegraph.com/subgraphs/name/traderjoe-xyz/exchange",
 			{
-				variables: { id: address.toLowerCase() },
 				query: `{ pairs(where: { id: "${address.toLowerCase()}" } ) { token0Price, token1Price, reserveUSD } }`,
 			}
 		)
 	).data;
+}
+
+export async function getJoePrice() {
+	return (
+		await axios.post(
+			"https://api.thegraph.com/subgraphs/name/traderjoe-xyz/exchange",
+			{
+				query: `{ pairs(where: { id: "0x3bc40d4307cd946157447cd55d70ee7495ba6140" } ) { id, name, token1Price } }`,
+			}
+		)
+	).data.data.pairs[0]!.token1Price;
 }
 
 export async function balanceTokens(
@@ -139,5 +234,5 @@ export async function balancePair(
 	const token0Price = pairs[0].token0Price;
 	const token1Price = pairs[0].token1Price;
 
-	return [(amount / 2) * token0Price, (amount / 2) * token1Price];
+	return [amount / 2 / token0Price, amount / 2 / token1Price];
 }
