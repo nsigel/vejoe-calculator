@@ -9,11 +9,10 @@ import {
 	getJoePrice,
 	getLPReserves,
 	getLPs,
-	poolUserInfo,
+	tokenPrice,
 	totalAllocPoint,
-	totalJoePerSec,
 } from "../../web3";
-import { LPData } from "../../web3/types";
+import { LPData, ReserveData } from "../../web3/types";
 import Result from "../Result";
 
 const Form = () => {
@@ -22,20 +21,24 @@ const Form = () => {
 	const [token0, setToken0] = useState<number>(0);
 	const [token1, setToken1] = useState<number>(0);
 	const [joePrice, setJoePrice] = useState<number>(0);
-	const [total, setTotal] = useState<number>(0);
 
 	const [address, setAddress] = useState<string>("");
 	const [balance, setBalance] = useState<number>(0);
+	const [reserves, setReserves] = useState<ReserveData>();
 
 	const [pools, setPools] = useState<LPData[]>([]);
-
+	const [token0Price, setToken0Price] = useState<number>();
 	useEffect(() => {
 		setToken0(0);
 		setToken1(0);
-		setTotal(0);
+
+		if (!selectedPool) return;
+
+		tokenPrice(selectedPool.lpAddress, 0).then(setToken0Price);
 		getJoePrice().then(setJoePrice);
-		console.log(joePrice);
-	}, [selectedPool, joePrice]);
+		getLPReserves(selectedPool).then(setReserves);
+		console.log(token0Price);
+	}, [selectedPool, joePrice, token0Price]);
 
 	useEffect(() => {
 		getLPs().then(setPools);
@@ -50,9 +53,10 @@ const Form = () => {
 	}, [address]);
 
 	return (
-		<div className="bg-joe-light-blue flex justify-center flex-col p-4 w-[650px] h-96 text-white text-md font-semibold">
+		<div className="bg-joe-light-blue flex justify-start flex-col p-4 w-[650px] text-white text-md font-semibold">
 			Calculate Boost
-			<div className="w-full flex flex-col gap-y-1 mt-2">
+			<div className="w-full flex flex-col gap-y-1 my-4">
+				<div className="text-gray-500 text-xs font-medium">Select Farm</div>
 				<select
 					className="bg-joe-dark-blue h-8 border border-joe-purple focus:outline-none text-xs"
 					defaultValue="Select Farm"
@@ -110,23 +114,6 @@ const Form = () => {
 						disabled={!selectedPool}
 					/>
 				</div>
-				<Input
-					name="total"
-					placeholder={!selectedPool ? "Select a farm to continue..." : ""}
-					onChange={async (e) => {
-						setTotal(e.target.valueAsNumber);
-						const tokenBalances = await balancePair(
-							selectedPool!.lpAddress,
-							e.target.valueAsNumber
-						);
-
-						setToken0(tokenBalances[0]);
-						setToken1(tokenBalances[1]);
-					}}
-					disabled={!selectedPool}
-					type="number"
-					value={total}
-				/>
 				<div className="flex justify-between gap-x-2 w-full">
 					<Input
 						name="address"
@@ -140,24 +127,30 @@ const Form = () => {
 						type="number"
 					/>
 				</div>
-				<button
-					type="submit"
-					className="bg-joe-purple h-16 rounded-sm my-2 text-white text-xs font-semibold"
-				>
-					Calculate APR!
-				</button>
 			</div>
-			Your APR:
-			<Result
-				{...{
-					poolData: selectedPool,
-					veJoe: balance,
-					totalAllocPoint,
-					token0,
-					token1,
-					joePrice,
-				}}
-			/>
+			{selectedPool &&
+			totalAllocPoint &&
+			token0 &&
+			token1 &&
+			joePrice &&
+			reserves &&
+			token0Price ? (
+				<>
+					Your APR
+					<Result
+						{...{
+							totalAllocPoint,
+							token0,
+							token1,
+							joePrice,
+							token0Price,
+							poolData: selectedPool,
+							reserve: reserves,
+							veJoe: balance,
+						}}
+					/>
+				</>
+			) : null}
 		</div>
 	);
 };

@@ -1,15 +1,17 @@
 import { BigNumber } from "ethers";
 import { useEffect, useState } from "react";
-import { calculateBaseReward, calculateBoostedReward } from "../web3";
-import { LPData } from "../web3/types";
+import { tokenPrice, totalJoePerSec } from "../web3";
+import { LPData, ReserveData } from "../web3/types";
 
 type Props = {
-	poolData?: LPData;
-	totalAllocPoint?: BigNumber;
-	token0?: number;
-	token1?: number;
-	veJoe?: number;
-	joePrice?: number;
+	poolData: LPData;
+	totalAllocPoint: BigNumber;
+	token0: number;
+	token1: number;
+	veJoe: number;
+	joePrice: number;
+	reserve: ReserveData;
+	token0Price: number;
 };
 
 const Result = ({
@@ -19,33 +21,70 @@ const Result = ({
 	token1,
 	veJoe,
 	joePrice,
+	reserve,
+	token0Price,
 }: Props) => {
-	const [baseReward, setBaseReward] = useState<number>(0);
-	const [boostedReward, setBoostedReward] = useState<number>(0);
-	const [boostedAPR, setBoostedAPR] = useState<number>(0);
-	const [baseAPR, setBaseAPR] = useState<number>(0);
+	const token0Reserve =
+		Number(reserve._reserve0) / 10 ** poolData.token0Decimals;
+	const totalSupply = Number(poolData.totalSupply) / 10 ** 18;
+	const userLiquidity = (token0 / token0Reserve) * totalSupply;
 
-	useEffect(() => {
-		if (!(poolData && totalAllocPoint && token0 && token1 && veJoe && joePrice))
-			return;
+	const totalVeJoe = Number(totalJoePerSec) / 10 ** 18;
+	const farmJoePerSec =
+		(totalVeJoe * Number(poolData.allocPoint)) / Number(totalAllocPoint); // checked
 
-		console.log(joePrice);
+	const farmBaseJoePerSec =
+		farmJoePerSec * (1 - Number(poolData.veJoeShareBp) / 10000);
 
-		setBaseReward(calculateBaseReward(poolData, token0, token1));
-		setBoostedReward(calculateBoostedReward(poolData, token0, token1, veJoe));
-	}, []);
+	const farmVeJoePerSec =
+		farmJoePerSec * (Number(poolData.veJoeShareBp) / 10000);
+
+	const totalLpSupply = Number(poolData.totalLpSupply) / 10 ** 18;
+	const baseRewardPerSec = (farmBaseJoePerSec * userLiquidity) / totalLpSupply;
+	const rewardBoostedPerSec =
+		((Math.sqrt(veJoe * userLiquidity) * farmVeJoePerSec) /
+			Number(poolData.totalFactor)) *
+		10 ** 18;
+
+	const boostedAPR =
+		((rewardBoostedPerSec * joePrice * 3600 * 24 * 365) /
+			(token0Price * token0) /
+			2) *
+		100;
+
+	const baseAPR =
+		((baseRewardPerSec * joePrice * 3600 * 24 * 365) /
+			(token0Price * token0) /
+			2) *
+		100;
 
 	return (
-		<div className="flex flex-col text-xs font-normal">
+		<div className="flex flex-col text-xs font-normal mt-1">
 			{poolData && totalAllocPoint && token0 && token1 && veJoe ? (
-				<div>
+				<div className="flex flex-row w-full gap-x-4">
 					<div>
-						Base Reward:
-						{baseReward}
+						<div className="text-gray-500 mb-1">Base APR</div>
+						{baseAPR.toFixed(2)}%
 					</div>
 					<div>
-						Boosted Reward:
-						{boostedReward}
+						<div className="text-gray-500 mb-1">Estimated Boosted APR</div>
+						{boostedAPR.toFixed(2)}%
+					</div>
+					<div>
+						<div className="text-gray-500 mb-1">
+							Estimated Annualized Return
+						</div>
+						$
+						{(
+							token0 *
+							token0Price *
+							2 *
+							(boostedAPR / 100 + baseAPR / 100)
+						).toFixed(2)}
+					</div>
+					<div>
+						<div className="text-gray-500 mb-1">Base Reward Per Year</div>
+						{(baseRewardPerSec * 3600 * 24 * 365).toFixed(2)} JOE
 					</div>
 				</div>
 			) : null}

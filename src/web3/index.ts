@@ -22,53 +22,6 @@ const BMC_CONTRACT = new ethers.Contract(
 export var totalJoePerSec: BigNumber;
 export var totalAllocPoint: BigNumber;
 
-// O(1) time
-export function calculateBaseReward(
-	poolData: LPData,
-	token0: number,
-	token1: number
-): number {
-	const poolJoePerSec =
-		(Number(totalJoePerSec) * Number(poolData.allocPoint)) /
-		Number(totalAllocPoint);
-	// Execute calculations in token decimals
-	const userLiquidity =
-		Math.min(
-			token0 * 10 ** poolData.token0Decimals,
-			token1 * 10 ** poolData.token1Decimals
-		) * poolData.totalSupply;
-	const veJoeShare = Number(poolData.veJoeShareBp) / 10000;
-
-	return (
-		(userLiquidity * poolJoePerSec * (1 - veJoeShare)) /
-		Number(poolData.totalLpSupply)
-	);
-}
-
-export function calculateBoostedReward(
-	poolData: LPData,
-	token0: number,
-	token1: number,
-	veJoe: number
-) {
-	const userLiquidity =
-		Math.min(
-			token0 * 10 ** poolData.token0Decimals,
-			token1 * 10 ** poolData.token1Decimals
-		) * poolData.totalSupply;
-
-	const poolJoePerSec =
-		(Number(totalJoePerSec) * Number(poolData.allocPoint)) /
-		Number(totalAllocPoint);
-
-	const veJoeShare = Number(poolData.veJoeShareBp) / 10000;
-
-	return (
-		(Math.sqrt(userLiquidity * veJoe * 10 ** 18) * poolJoePerSec * veJoeShare) /
-		10000
-	);
-}
-
 export async function getLPReserves(poolData: LPData): Promise<ReserveData> {
 	const LP_CONTRACT = new ethers.Contract(
 		poolData.lpAddress,
@@ -131,7 +84,7 @@ export async function getLPData(poolID: number): Promise<LPData> {
 		TOKEN_1_CONTRACT.name(),
 		TOKEN_1_CONTRACT.symbol(),
 		TOKEN_1_CONTRACT.decimals(),
-		TOKEN_1_CONTRACT.totalSupply(),
+		LP_CONTRACT.totalSupply(),
 
 		(await TOKEN_0_CONTRACT.symbol()) + "-" + (await TOKEN_1_CONTRACT.symbol()),
 	]);
@@ -202,6 +155,14 @@ export async function getJoePrice() {
 			}
 		)
 	).data.data.pairs[0]!.token1Price;
+}
+
+export async function tokenPrice(address: string, token: 0 | 1) {
+	const {
+		data: { pairs },
+	} = await getPairData(address);
+	const tokenPrice = pairs[0]![`token${token}Price`];
+	return tokenPrice;
 }
 
 export async function balanceTokens(
