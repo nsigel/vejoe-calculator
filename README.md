@@ -1,4 +1,4 @@
-# VeJoe Calculator
+# veJOE Calculator
 #### Easily calculate your Liquidity Farming yield usign this simple calculator!
 
 This site is my (late) entry for the TraderJoe veJOE calculator [bounty](https://docs.google.com/document/d/1MZw8ILW6duUwUVrfaLHukhQD0G0gtpkG3MTFk5z3ufo). It uses React.js, Typescript, and TailwindCSS to calculate LP yield based on your veJOE balance! 
