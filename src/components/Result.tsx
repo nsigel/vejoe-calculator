@@ -1,6 +1,6 @@
 import { BigNumber } from "ethers";
 import { useEffect, useState } from "react";
-import { tokenPrice, totalJoePerSec } from "../web3";
+import { balancePair, tokenPrice, totalJoePerSec } from "../web3";
 import { LPData, ReserveData } from "../web3/types";
 
 type Props = {
@@ -12,6 +12,7 @@ type Props = {
 	joePrice: number;
 	reserve: ReserveData;
 	token0Price: number;
+	token1Price: number;
 };
 
 const Result = ({
@@ -23,7 +24,10 @@ const Result = ({
 	joePrice,
 	reserve,
 	token0Price,
+	token1Price,
 }: Props) => {
+	console.log(token0Price, token1Price);
+
 	const token0Reserve =
 		Number(reserve._reserve0) / 10 ** poolData.token0Decimals;
 	const totalSupply = Number(poolData.totalSupply) / 10 ** 18;
@@ -46,6 +50,8 @@ const Result = ({
 			Number(poolData.totalFactor)) *
 		10 ** 18;
 
+	const getAnnualizedReturn = (n: number) => n * 3600 * 24 * 365;
+
 	const boostedAPR =
 		((rewardBoostedPerSec * joePrice * 3600 * 24 * 365) /
 			(token0Price * token0) /
@@ -53,7 +59,7 @@ const Result = ({
 		100;
 
 	const baseAPR =
-		((baseRewardPerSec * joePrice * 3600 * 24 * 365) /
+		(getAnnualizedReturn(baseRewardPerSec * joePrice) /
 			(token0Price * token0) /
 			2) *
 		100;

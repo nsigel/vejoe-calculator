@@ -1,21 +1,28 @@
 import axios from "axios";
-import { LPData, PoolInfoData, ReserveData } from "./types";
+import { LPData, ReserveData } from "./types";
 import { ethers, BigNumber } from "ethers";
 
 import BoostedMasterChief from "../contracts/BoostedMasterChef.json";
 import JoeLPToken from "../contracts/JoeLPToken.json";
+import JoeRouter from "../contracts/JoeRouter.json";
 import IERC20 from "../contracts/IERC20.json";
 
 const RPC_URL = "https://api.avax.network/ext/bc/C/rpc";
 
 const BMC_ADDRESS = "0x4483f0b6e2F5486D06958C20f8C39A7aBe87bf8F";
-const NULL_ADDRESS = "0x0000000000000000000000000000000000000000";
+const ROUTER_ADDRESS = "0x60aE616a2155Ee3d9A68541Ba4544862310933d4";
 
 const provider = new ethers.providers.JsonRpcProvider(RPC_URL);
 
 const BMC_CONTRACT = new ethers.Contract(
 	BMC_ADDRESS,
 	BoostedMasterChief,
+	provider
+);
+
+const ROUTER_CONTRACT = new ethers.Contract(
+	ROUTER_ADDRESS,
+	JoeRouter,
 	provider
 );
 
@@ -157,12 +164,22 @@ export async function getJoePrice() {
 	).data.data.pairs[0]!.token1Price;
 }
 
-export async function tokenPrice(address: string, token: 0 | 1) {
-	const {
-		data: { pairs },
-	} = await getPairData(address);
-	const tokenPrice = pairs[0]![`token${token}Price`];
-	return tokenPrice;
+export async function tokenPrice(lpData: LPData, token: 0 | 1) {
+	const tokenAddress = lpData[`token${token}`].toLowerCase();
+	const tokenPath = [
+		"0xb31f66aa3c1e785363f0875a1b74e27b85fd66c7", // WAVAX Routing to ensure liquidity
+		"0xc7198437980c041c805A1EDcbA50c1Ce5db95118", // USDT
+	];
+	if (!(tokenPath[0] === tokenAddress)) {
+		tokenPath.unshift(tokenAddress);
+	}
+
+	const tokenInAmount = ethers.BigNumber.from("10").pow(
+		lpData[`token${token}Decimals`]
+	);
+
+	const result = await ROUTER_CONTRACT.getAmountsOut(tokenInAmount, tokenPath);
+	return (result[2] || result[1]) / 1 / 10 ** 6; // Return token in USDT / 10**6 (USDT Decimals)
 }
 
 export async function balanceTokens(

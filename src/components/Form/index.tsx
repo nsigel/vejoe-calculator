@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 
 import Input from "./Input";
+import Result from "../Result";
 
 import {
-	balancePair,
 	balanceTokens,
 	fetchBalance,
 	getJoePrice,
@@ -13,7 +13,6 @@ import {
 	totalAllocPoint,
 } from "../../web3";
 import { LPData, ReserveData } from "../../web3/types";
-import Result from "../Result";
 
 const Form = () => {
 	const [selectedPool, setSelectedPool] = useState<LPData>();
@@ -28,17 +27,19 @@ const Form = () => {
 
 	const [pools, setPools] = useState<LPData[]>([]);
 	const [token0Price, setToken0Price] = useState<number>();
+	const [token1Price, setToken1Price] = useState<number>();
 	useEffect(() => {
 		setToken0(0);
 		setToken1(0);
 
 		if (!selectedPool) return;
 
-		tokenPrice(selectedPool.lpAddress, 0).then(setToken0Price);
+		tokenPrice(selectedPool, 0).then(setToken0Price);
+		tokenPrice(selectedPool, 1).then(setToken1Price);
+
 		getJoePrice().then(setJoePrice);
 		getLPReserves(selectedPool).then(setReserves);
-		console.log(token0Price);
-	}, [selectedPool, joePrice, token0Price]);
+	}, [selectedPool, joePrice, token0Price, token1Price]);
 
 	useEffect(() => {
 		getLPs().then(setPools);
@@ -122,7 +123,7 @@ const Form = () => {
 					/>
 					<Input
 						name="balance"
-						onChange={(e) => setBalance(Number(e.target.value))}
+						onChange={(e) => setBalance(e.target.valueAsNumber)}
 						value={balance}
 						type="number"
 					/>
@@ -134,7 +135,8 @@ const Form = () => {
 			token1 &&
 			joePrice &&
 			reserves &&
-			token0Price ? (
+			token0Price &&
+			token1Price ? (
 				<>
 					Your APR
 					<Result
@@ -144,6 +146,8 @@ const Form = () => {
 							token1,
 							joePrice,
 							token0Price,
+							token1Price,
+
 							poolData: selectedPool,
 							reserve: reserves,
 							veJoe: balance,
