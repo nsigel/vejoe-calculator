@@ -26,8 +26,6 @@ const Result = ({
 	token0Price,
 	token1Price,
 }: Props) => {
-	console.log(token0Price, token1Price);
-
 	const token0Reserve =
 		Number(reserve._reserve0) / 10 ** poolData.token0Decimals;
 	const totalSupply = Number(poolData.totalSupply) / 10 ** 18;
@@ -63,6 +61,8 @@ const Result = ({
 			(token0Price * token0) /
 			2) *
 		100;
+	const annualizedReturn =
+		token0 * token0Price * 2 * (boostedAPR / 100 + baseAPR / 100);
 
 	return (
 		<div className="flex flex-col text-xs font-normal mt-1">
@@ -80,13 +80,7 @@ const Result = ({
 						<div className="text-gray-500 mb-1">
 							Estimated Annualized Return
 						</div>
-						$
-						{(
-							token0 *
-							token0Price *
-							2 *
-							(boostedAPR / 100 + baseAPR / 100)
-						).toFixed(2)}
+						${annualizedReturn.toFixed(2)}
 					</div>
 					<div>
 						<div className="text-gray-500 mb-1">Base Reward Per Year</div>

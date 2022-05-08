@@ -48,7 +48,7 @@ export async function getLPReserves(poolData: LPData): Promise<ReserveData> {
 export async function poolUserInfo(
 	poolID: number,
 	wallet: string
-): Promise<any> {
+): Promise<LPData> {
 	return await BMC_CONTRACT.userInfo(poolID, wallet);
 }
 
