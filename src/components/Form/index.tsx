@@ -136,7 +136,8 @@ const Form = () => {
 			joePrice &&
 			reserves &&
 			token0Price &&
-			token1Price ? (
+			token1Price &&
+			balance ? (
 				<>
 					Your APR
 					<Result
