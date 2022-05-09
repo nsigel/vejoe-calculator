@@ -54,12 +54,12 @@ const Form = () => {
 	}, [address]);
 
 	return (
-		<div className="bg-joe-light-blue flex justify-start flex-col p-4 w-[650px] text-white text-md font-semibold">
+		<div className="bg-joe-light-blue flex justify-start flex-col p-4 w-[576px] text-white text-lg rounded-md font-medium">
 			Calculate Boost
-			<div className="w-full flex flex-col gap-y-1 my-4">
+			<div className="w-full flex flex-col gap-y-1 my-2 mb-3">
 				<div className="text-gray-500 text-xs font-medium">Select Farm</div>
 				<select
-					className="bg-joe-dark-blue h-8 border border-joe-purple focus:outline-none text-xs"
+					className="bg-joe-dark-blue h-8 border rounded-sm border-joe-purple font-medium focus:outline-none text-xs px-1 pr-4"
 					defaultValue="Select Farm"
 					value={selectedPool?.pair}
 					onChange={(e) => {

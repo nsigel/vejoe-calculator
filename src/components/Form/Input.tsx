@@ -8,8 +8,8 @@ const Input = (props: React.InputHTMLAttributes<HTMLInputElement>) => {
 				{props.name}
 			</label>
 			<input
-				placeholder={props.placeholder || ""}
-				className="w-full h-8 bg-joe-dark-blue border border-joe-purple rounded-xs text-white focus:outline-none px-2 text-xs "
+				placeholder={props.placeholder}
+				className="w-full h-8 font-medium bg-joe-dark-blue border border-joe-purple rounded-xs text-white focus:outline-none px-2 text-xs rounded-sm"
 				{...props}
 			/>
 		</div>
